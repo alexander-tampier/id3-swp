@@ -275,7 +275,7 @@ def convert_data_from_input(input):
 
 
 def main():
-    matrix = load_csv('./06_machinelearning_id3_table_weather.csv')
+    matrix = load_csv('./06_machinele:arning_id3_table_weather.csv')
     root = id3_recursive(matrix)
 
     my_json = str(root).replace("'", '"')

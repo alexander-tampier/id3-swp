@@ -1,8 +1,11 @@
-import csv
+from __future__ import print_function
 
+import csv
+import json
 # Check the cardinality and count the existing ones
 # and return the entropy E(S)
 import math
+import sys
 
 
 class Node:
@@ -28,22 +31,20 @@ class AttributeQuality:
 
     def calc_gain(self, entropy):
         self.gain = round(entropy - self.information, 3)
-        print(self.name, self.gain)
+        # print(self.name, self.gain)
 
     def calc_information(self):
         n = 0
         sum = 0
         for x in self.count_dict.values():
             for y in x:
-                n+=y[1]
-
-
+                n += y[1]
 
         for key in self.entropy_dict:
             counter = 0
             for count in self.count_dict[key]:
                 counter += count[1]
-            sum +=  counter * 1 / n * self.entropy_dict[key]
+            sum += counter * 1 / n * self.entropy_dict[key]
 
         self.information = round(sum, 3)
 
@@ -104,6 +105,7 @@ def entropy_sub_information(matrix, attribute_F=0):
     return AttributeQuality(name, cardinalities, entropy, count)
 
 
+# entropy_s = entropy_s - p * math.log2(p)
 def get_overall_entropy(matrix):
     cardinality = []
     line_count = 0;
@@ -115,6 +117,7 @@ def get_overall_entropy(matrix):
             cardinality.append(row[-1])
 
     count_cardinality = count_cardinality_result(cardinality)
+
     return get_entropy(count_cardinality)
 
 
@@ -164,7 +167,7 @@ def modify_data(data, quality):
     for row in data:
         if counter == 0:
             fette_data_like_filtered_and_stuff.append(row)
-            counter+=1
+            counter += 1
         for entry in row:
             if entry == quality:
                 fette_data_like_filtered_and_stuff.append(row)
@@ -172,19 +175,20 @@ def modify_data(data, quality):
     return fette_data_like_filtered_and_stuff
 
 
-def id3_recursive(data):
-
+def id3_recursive(data, attributes=0):
     node = {}
 
     objects = []
     index = 0
 
     e_s = get_overall_entropy(data)
+
+    # data[0] all headers
+    # iterate through headers to get information gain per column
     for row in data[0]:
         if index == len(data[0]) - 1:
             break
         column_obj = entropy_sub_information(data, index)
-
         column_obj.calc_information()
         column_obj.calc_gain(e_s)
         objects.append(column_obj)
@@ -194,27 +198,93 @@ def id3_recursive(data):
     node[obj.name] = {}
     node[obj.name]['children'] = []
 
-    print(obj)
-
-
     for quality in obj.cardinalities:
+        new_node_leaf = {}
+        new_node_leaf[quality] = {}
+        new_node_leaf[quality]['children'] = []
+
         if len(obj.count_dict[quality]) == 1:
-            node[obj.name]['children'].append(obj.count_dict[quality][0][0])
-            #print(obj.count_dict[quality])
-            return node;
+            new_node_leaf[quality]['children'].append(obj.count_dict[quality][0][0])
+            node[obj.name]['children'].append(new_node_leaf)
+
+        elif attributes == 1:
+            1 + 1
+            # stuff
+
         else:
-            new_data = modify_data(data,quality)
-            node[obj.name]['children'].append(id3_recursive(new_data))
+            new_data = modify_data(data, quality)
+            new_node_leaf[quality]['children'].append(id3_recursive(new_data))
+            node[obj.name]['children'].append(new_node_leaf)
 
     return node
 
-    # id3_recursive(new_matrix)
+
+def print_the_tree(my_json):
+    # Convert JSON tree to a Python dict
+    data = json.loads(my_json)
+
+    # Convert back to JSON & print to stderr so we can verify that the tree is correct.
+    print(json.dumps(data, indent=4), file=sys.stderr)
+
+    # Extract tree edges from the dict
+    edges = []
+
+    def get_edges(treedict, parent=None):
+        name = next(iter(treedict.keys()))
+        if parent is not None:
+            edges.append((parent, name))
+        for item in treedict[name]["children"]:
+            if isinstance(item, dict):
+                get_edges(item, parent=name)
+            else:
+                edges.append((name, item))
+
+    get_edges(data)
+
+    # Dump edge list in Graphviz DOT format
+    print('strict digraph tree {')
+    for row in edges:
+        print('    {0} -> {1};'.format(*row))
+    print('}')
+
+
+def get_my_decision(root, input):
+    if type(root) is str:
+        return root
+
+    moment = next(iter(root.keys()))
+    not_smarter_shit = root[moment]['children']
+    to_find = input[moment]
+
+    # is leaf return the result
+    if len(not_smarter_shit) == 1 and type(next(iter(not_smarter_shit))) is str:
+        return next(iter(not_smarter_shit))
+
+    for entry in not_smarter_shit:
+        for k, v in entry.items():
+            if k == to_find:
+                return get_my_decision(next(iter(v['children'])), input)
+
+
+def convert_data_from_input(input):
+    da_dicty = {}
+    for x in range(len(input[0])):
+        da_dicty[input[0][x]] = input[1][x]
+
+    return da_dicty
 
 
 def main():
     matrix = load_csv('./06_machinelearning_id3_table_weather.csv')
     root = id3_recursive(matrix)
-    print(root)
+
+    my_json = str(root).replace("'", '"')
+    print_the_tree(my_json)
+
+    # Get the decision
+    # input = [['Outlook', 'Temperature', 'Humidity', 'Windy'], ['overcast','hot','high','FALSE']]
+    # d = get_my_decision(root, convert_data_from_input(input))
+    # print('Decision - ', matrix[0][-1], ': ', d)
 
 
 if __name__ == "__main__": main()

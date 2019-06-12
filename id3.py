@@ -31,7 +31,7 @@ class AttributeQuality:
 
     def calc_gain(self, entropy):
         self.gain = round(entropy - self.information, 3)
-        # print(self.name, self.gain)
+        #print(self.name, self.gain)
 
     def calc_information(self):
         n = 0
@@ -191,6 +191,7 @@ def id3_recursive(data, attributes=0):
         column_obj = entropy_sub_information(data, index)
         column_obj.calc_information()
         column_obj.calc_gain(e_s)
+        #print(column_obj)
         objects.append(column_obj)
         index += 1
 
@@ -209,7 +210,7 @@ def id3_recursive(data, attributes=0):
 
         elif attributes == 1:
             1 + 1
-            # stuff
+            # todo - add the last decision
 
         else:
             new_data = modify_data(data, quality)
@@ -278,13 +279,14 @@ def main():
     matrix = load_csv('./06_machinelearning_id3_table_weather.csv')
     root = id3_recursive(matrix)
 
+    # print the id3
     my_json = str(root).replace("'", '"')
     print_the_tree(my_json)
 
     # Get the decision
-    # input = [['Outlook', 'Temperature', 'Humidity', 'Windy'], ['overcast','hot','high','FALSE']]
-    # d = get_my_decision(root, convert_data_from_input(input))
-    # print('Decision - ', matrix[0][-1], ': ', d)
+    input = [['Outlook', 'Temperature', 'Humidity', 'Windy'], ['overcast','hot','high','FALSE']]
+    d = get_my_decision(root, convert_data_from_input(input))
+    print('Decision - ', matrix[0][-1], ': ', d)
 
 
 if __name__ == "__main__": main()
